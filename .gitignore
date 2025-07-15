@@ -1,0 +1,19 @@
+# .gitignore
+
+# Ignore virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Plot images
+*.png
+
+# OS files
+.DS_Store
+
+# Jupyter checkpoints (if any)
+.ipynb_checkpoints/
+
