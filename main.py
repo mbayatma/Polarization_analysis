@@ -15,6 +15,8 @@ mass_variables = ["M_ee", "M_mumu", "M_epmup"]
 delta_phi_variables = ["dphi_mumu", "dphi_epmup"]
 dr_variables=["DR_mupmum", "DR_epmup"]
 
+special_variables = mass_variables + delta_phi_variables + dr_variables
+
 # Axis labels (with LaTeX formatting)
 label_map = {
     "M_ee": r"$M_{e^+e^-}$ [GeV]",
@@ -43,7 +45,7 @@ def extract_leading(tree, branch):
 #Helper to get valid branch names
 def get_valid_branches(tree):
     skip_prefixes = ("GenParticle_", "ph_", "photon")
-    skip_exact = ("event", "eventWeight", "el_charge", "mu_charge", "nPhoton", "charge")
+    skip_exact = ("event", "eventWeight", "el_charge", "mu_charge", "nPhotons", "charge", "nElectrons", "nMuons", "nJets","jet_btag")
     return [
         b for b in tree.keys()
         if not any(b.startswith(p) for p in skip_prefixes) and b not in skip_exact
@@ -131,7 +133,8 @@ def main():
 
     if args.all:
         branches = get_valid_branches(trees_SM[r"$W_L Z_L$"])
-        for var_name in branches:
+        all_variables = branches + special_variables
+        for var_name in all_variables:
             print(f"\n📊 Plotting: {var_name}")
             process_variable(var_name, trees_SM, trees_EFT)
     elif args.var:

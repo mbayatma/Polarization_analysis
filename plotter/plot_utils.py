@@ -27,8 +27,8 @@ def plot_comparison(
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
 
     n_ratio_panels = len(polarizations)
-    fig = plt.figure(figsize=(10, 3 + 1.2 * (2 + n_ratio_panels)))
-    gs = GridSpec(n_ratio_panels + 2, 1, height_ratios=[3] + [1]*(n_ratio_panels + 1), hspace=0.15)
+    fig = plt.figure(figsize=(10, 5 + 1.2 * (1 + n_ratio_panels)))
+    gs = GridSpec(n_ratio_panels + 2, 1, height_ratios=[5] + [1]*(n_ratio_panels + 1), hspace=0.15)
 
     # --- Top: histogram comparison ---
     ax0 = fig.add_subplot(gs[0])
@@ -52,7 +52,7 @@ def plot_comparison(
         ax1.plot(bin_centers[valid], ratio_dict[pol][valid], color=colors[pol], label=pol)
     ax1.axhline(1.0, color='black', linestyle='--', linewidth=1.2)
     ax1.set_ylabel("EFT / SM")
-    ax1.set_ylim(0.3, 1.5)
+    ax1.set_ylim(0.0, 4)
     ax1.grid(True)
     ax1.tick_params(labelbottom=False)
     ax1.legend(ncol=2)
@@ -64,7 +64,7 @@ def plot_comparison(
         ax.plot(bin_centers[valid], ratio_dict[pol][valid], color=colors[pol])
         ax.axhline(1.0, color='black', linestyle='--', linewidth=1.0)
         ax.set_ylabel(pol)
-        ax.set_ylim(0.3, 1.5)
+        ax.set_ylim(0.0, 1.5)
         ax.grid(True)
         if i == len(polarizations) - 1:
             ax.set_xlabel(xlabel)
