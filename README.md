@@ -4,7 +4,7 @@ This repository provides tools for plotting and comparing Standard Model (SM) vs
 
 ## Features
 
-- Reads ROOT files containing physics data (currently containint Pythia shower)
+- Reads ROOT files containing physics data (currently with Pythia shower)
 - Computes histograms normalized by absolute cross-section
 - Plots:
   - Leading variable distributions (e.g. `el_pt`, `jet_pt`, `MET`)
