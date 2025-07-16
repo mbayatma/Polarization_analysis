@@ -9,13 +9,15 @@ from plotter.config import polarizations, xsecs_SM, xsecs_EFT
 from plotter.mass_utils import compute_mass
 from plotter.delta_phi_utils import delta_phi_mumu, delta_phi_epmup
 from plotter.deltar_utils import compute_delta_r
+from plotter.rapidity_utils import compute_rapidity
+#from plotter.config import rapidity_variables
 
 #list of defined variables
 mass_variables = ["M_ee", "M_mumu", "M_epmup"]
 delta_phi_variables = ["dphi_mumu", "dphi_epmup"]
 dr_variables=["DR_mupmum", "DR_epmup"]
 
-special_variables = mass_variables + delta_phi_variables + dr_variables
+special_variables = mass_variables + delta_phi_variables + dr_variables + rapidity_variables
 
 # Axis labels (with LaTeX formatting)
 label_map = {
@@ -26,6 +28,11 @@ label_map = {
     "dphi_epmup": r"$\Delta\phi(e^+, \mu^+)$ [degrees]",
     "DR_mupmum": r"$\Delta R(\mu^+, \mu^-)$",
     "DR_epmup": r"$\Delta R(e^+, \mu^+)$",
+    "yep": r"$y_{e^+}$",
+    "ymm": r"$y_{\mu^-}$",
+    "yuu": r"$y_{\mu^+\mu^-}$",
+    "dyuu": r"$|\Delta y(\mu^+, \mu^-)|$",
+    "dypp": r"$|\Delta y(e^+, \mu^+)|$"
 }
 
 # Delta phi function mapping
@@ -68,9 +75,13 @@ def process_variable(var_name, trees_SM, trees_EFT):
         elif var_name in dr_variables:
              data_SM = compute_delta_r(trees_SM[pol], var_name)
              data_EFT= compute_delta_r(trees_EFT[pol], var_name)
+        elif var_name in rapidity_variables:
+             data_SM = compute_rapidity(trees_SM[pol], var_name)
+             data_EFT = compute_rapidity(trees_EFT[pol], var_name)
         else:  
             data_SM = extract_leading(trees_SM[pol], var_name)
             data_EFT = extract_leading(trees_EFT[pol], var_name)
+        
 
         if len(data_SM) == 0 or len(data_EFT) == 0:
             print(f"⚠️ Skipping {pol} — no valid data for {var_name}")
@@ -89,6 +100,9 @@ def process_variable(var_name, trees_SM, trees_EFT):
     
     elif var_name in dr_variables:
        bins = np.linspace (0,6,30)
+    
+    elif var_name in rapidity_variables:
+       bins = np.linspace(-3, 3, 40) if "y" in var_name and "d" not in var_name else np.linspace(0, 5, 40)
        
     else:
        bin_min = np.floor(np.min(all_data) / 10) * 10

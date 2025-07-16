@@ -73,4 +73,6 @@ delta_phi_variables = {
     }
 }
 
+rapidity_variables = ["yep", "ymm", "yuu", "dyuu", "dypp", "dyez"]
+
 
