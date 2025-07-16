@@ -62,3 +62,15 @@ mass_variables = {
     }
 }
 
+delta_phi_variables = {
+    "dphi_mumu": {
+        "function": "delta_phi_mumu",
+        "xlabel": r"$\Delta\phi(\mu^+, \mu^-)$ [degrees]"
+    },
+    "dphi_epmup": {
+        "function": "delta_phi_epmup",
+        "xlabel": r"$\Delta\phi(e^+, \mu^+)$ [degrees]"
+    }
+}
+
+

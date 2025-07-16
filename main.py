@@ -7,16 +7,27 @@ from plotter.io import load_SM_and_EFT_trees
 from plotter.plot_utils import compute_histogram, compute_ratio, plot_comparison
 from plotter.config import polarizations, xsecs_SM, xsecs_EFT
 from plotter.mass_utils import compute_mass
+from plotter.delta_phi_utils import delta_phi_mumu, delta_phi_epmup
 
-#list of special variables
+#list of defined variables
 
 mass_variables = ["M_ee", "M_mumu", "M_epmup"]
+delta_phi_variables = ["dphi_mumu", "dphi_epmup"]
 # Axis labels (with LaTeX formatting)
 label_map = {
     "M_ee": r"$M_{e^+e^-}$ [GeV]",
     "M_mumu": r"$M_{\mu^+\mu^-}$ [GeV]",
     "M_epmup": r"$M_{e^+\mu^+}$ [GeV]",
+    "dphi_mumu": r"$\Delta\phi(\mu^+, \mu^-)$ [degrees]",
+    "dphi_epmup": r"$\Delta\phi(e^+, \mu^+)$ [degrees]",
 }
+
+# Delta phi function mapping
+delta_phi_map = {
+    "dphi_mumu": delta_phi_mumu,
+    "dphi_epmup": delta_phi_epmup,
+}
+
 
 def extract_leading(tree, branch):
     array = tree[branch].arrays(library="np")[branch]
@@ -43,6 +54,10 @@ def process_variable(var_name, trees_SM, trees_EFT):
         if var_name in mass_variables:
             data_SM = compute_mass(trees_SM[pol], var_name)
             data_EFT = compute_mass(trees_EFT[pol], var_name)
+        elif var_name in delta_phi_variables:
+             func=delta_phi_map[var_name]
+             data_SM= func(trees_SM[pol])
+             data_EFT= func(trees_EFT[pol])
         else:  
             data_SM = extract_leading(trees_SM[pol], var_name)
             data_EFT = extract_leading(trees_EFT[pol], var_name)
@@ -58,6 +73,9 @@ def process_variable(var_name, trees_SM, trees_EFT):
     
     if var_name in mass_variables:
        bins = np.linspace(50, 130, 60)
+       
+    elif var_name in delta_phi_variables:
+       bins = np.linspace(0, 180, 36)
     else:
        bin_min = np.floor(np.min(all_data) / 10) * 10
        bin_max = np.ceil(np.max(all_data) / 10) * 10
