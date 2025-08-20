@@ -22,9 +22,9 @@ Activate your virtual environment and run:
 
 ```bash
 python3 main.py --var el_pt        # Plot a specific variable
-python3 main.py --all              # Plot all standard ROOT variables
+python3 main.py --all              # Plot all standard ROOT variables ```
 
-##updated version
+## Updated version
 the new main_new.py is to plot the variables from the root file produced from lHE files (no parthon shower)
 new functions to define variables from the four momentum are defined in physics_variables.py
 the previous version is kept and one can switch between different root files using source , --source spin or --source old (the default version is spin at the moment)
