@@ -1,8 +1,27 @@
 # plotter/config.py
-
+#files with parton shower
 base_path = "/eos/user/m/mbayatma/polarization_files/"
 
-polarizations = [r"$W_L Z_L$", r"$W_T Z_T$", r"$W_T Z_L$", r"$W_L Z_T$"]
+#new files without parton shower madspin and no madspin 
+
+base_path_SM="/eos/user/m/mbayatma/polarization_files/SMRootFiles"
+base_path_BSM="/eos/user/m/mbayatma/polarization_files/BSMRootFiles"
+
+polarizations = [r"$W_L Z_L$", r"$W_T Z_T$", r"$W_T Z_L$", r"$W_L Z_T$", r"$W_T Z_T$ (Madspin)"]
+
+files_SM_spin= { 
+    r"$W_T Z_T$ (Madspin)": "MadSpin_WZ_3L_WT_ZT_SM.root", 
+    r"$W_L Z_L$":  "WZ_3L_WL_ZL_SM.root" ,
+    r"$W_T Z_T$": "WZ_3L_WT_ZT_SM.root",  
+    r"$W_T Z_L$": "WZ_3L_WT_ZL_SM.root",  
+    r"$W_L Z_T$": "WZ_3L_WL_ZT_SM.root"  
+} 
+files_BSM_spin= {
+    r"$W_L Z_L$":  "WZ_3L_WL_ZL_NPcW.root" ,
+    r"$W_T Z_T$": "WZ_3L_WT_ZT_NPcW.root",  
+    r"$W_T Z_L$": "WZ_3L_WT_ZL_NPcW.root",  
+    r"$W_L Z_T$": "WZ_3L_WL_ZT_NPcW.root"  
+}
 
 files_SM = {
     r"$W_L Z_L$": "Polarization_WZ_3L_WL_ZL_SM.root",
@@ -36,7 +55,8 @@ colors = {
     r"$W_L Z_L$": "red",
     r"$W_T Z_T$": "blue",
     r"$W_T Z_L$": "green",
-    r"$W_L Z_T$": "goldenrod"
+    r"$W_L Z_T$": "goldenrod",
+    r"$W_T Z_T$ (Madspin)": "purple" 
 }
 
 
