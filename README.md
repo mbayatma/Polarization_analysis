@@ -10,11 +10,17 @@ This repository provides tools for plotting and comparing Standard Model (SM) vs
   - Leading variable distributions (e.g. `el_pt`, `jet_pt`, `MET`)
   - Invariant mass distributions (`M_ee`, `M_mumu`, `M_epmup`)
   - Ratio plots (EFT / SM) including per-polarization breakdowns for better visualisation
+
+- updated version
+- main_new.py to plot the variables from the root files with no parton shower (LHE files)
+- new functions are defined in the physics_variables.py
+- One can switch between the two root files (with/without parton showering) using source, --source spin --source old (the default version is spin at the moment)
 ## Installation
 
 dependencies can be found in requirements.txt file:
 
 pip install -r requirements.txt
+
 
 ## Usage
 
@@ -24,7 +30,3 @@ Activate your virtual environment and run:
 python3 main.py --var el_pt        # Plot a specific variable
 python3 main.py --all              # Plot all standard ROOT variables
 
-## Updated version
-the new main_new.py is to plot the variables from the root file produced from lHE files (no parthon shower)
-new functions to define variables from the four momentum are defined in physics_variables.py
-the previous version is kept and one can switch between different root files using source , --source spin or --source old (the default version is spin at the moment)
