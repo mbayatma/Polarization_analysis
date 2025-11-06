@@ -7,6 +7,7 @@ from .config import polarizations, xsecs_SM, xsecs_EFT, colors
 
 def compute_histogram(data, xsec, n_total, bins):
     bin_width = bins[1] - bins[0]
+    #weight = (xsec / n_total)
     weight = (xsec / n_total) / bin_width
     weights = np.full_like(data, weight)
     hist, _ = np.histogram(data, bins=bins, weights=weights)
@@ -100,5 +101,7 @@ def plot_comparison(
     fig.tight_layout()
     if output_path:
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.show()
+        print(f"✅ Plot saved to: {output_path}")
+    #plt.show()
+    plt.close()
 

@@ -38,10 +38,11 @@ files_EFT = {
 }
 
 xsecs_SM = {
+    r"$W_T Z_T$ (Madspin)":0.274366,
     r"$W_L Z_L$": 0.0222885,
     r"$W_T Z_T$": 0.274366,
     r"$W_T Z_L$": 0.0312744,
-    r"$W_L Z_T$": 0.0951278
+    r"$W_L Z_T$": 0.03439
 }
 
 xsecs_EFT = {
