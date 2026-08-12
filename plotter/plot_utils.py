@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from scipy.signal import savgol_filter
-from .config import polarizations, xsecs_SM, xsecs_EFT, colors
+from .config import polarizations, xsecs_SM, colors
 
 
 def compute_histogram(data, xsec, n_total, bins):
@@ -41,7 +41,8 @@ def plot_comparison(
     bins,
     xlabel,
     output_path=None,
-    ratio_uncertainties=None
+    ratio_uncertainties=None,
+    operator=None
 ):
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
     ratio_keys = [pol for pol in polarizations if pol in hist_sm_dict and pol in ratio_dict]
@@ -62,7 +63,15 @@ def plot_comparison(
     ax0.set_yscale("log")
     ax0.set_title(f"{variable_name} Distribution (Cross-Section Normalized)")
     ax0.grid(True)
-    ax0.legend(ncol=2)
+    # --- Legend with operator label ---
+    handles, labels = ax0.get_legend_handles_labels()
+    if operator is not None:
+        # Add a dummy (invisible) handle just to carry the text "Operator: cXXX"
+        dummy = plt.Line2D([], [], color='none')
+        handles.append(dummy)
+        labels.append(f"Operator: {operator}")
+    ax0.legend(handles, labels, ncol=2)
+    #ax0.legend(ncol=2)
     ax0.tick_params(labelbottom=False)
 
     # --- Middle: Combined Ratio Panel ---

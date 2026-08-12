@@ -85,6 +85,124 @@ def _split_leptons_with_charge(arrays):
     return e_plus, e_minus, mu_plus, mu_minus
 
 
+def _p3(v):
+    return np.array([v.px, v.py, v.pz], dtype=float)
+
+def _boost_p4(p4, beta):
+    """
+    Boost a four-vector p4=(E,px,py,pz) by velocity beta (3-vector).
+    beta is the velocity of the *new frame* w.r.t. old frame.
+    To go to the parent rest frame, use beta = parent_p / parent_E, and boost by -beta.
+    """
+    E, px, py, pz = p4
+    b = np.array(beta, dtype=float)
+    b2 = np.dot(b, b)
+    if b2 >= 1.0 or b2 == 0.0:
+        return np.array([E, px, py, pz], dtype=float)
+
+    gamma = 1.0 / np.sqrt(1.0 - b2)
+    p = np.array([px, py, pz], dtype=float)
+    bp = np.dot(b, p)
+
+    E_prime = gamma * (E - bp)
+    factor = (gamma - 1.0) * bp / b2 - gamma * E
+    p_prime = p + factor * b
+    return np.array([E_prime, p_prime[0], p_prime[1], p_prime[2]], dtype=float)
+
+def _to_rest_frame(p4_child, p4_parent):
+    """
+    Return child's four-vector in parent's rest frame.
+    """
+    Epar, pxpar, pypar, pzpar = p4_parent
+    if Epar == 0:
+        return np.array(p4_child, dtype=float)
+    beta = np.array([pxpar, pypar, pzpar], dtype=float) / float(Epar)
+    return _boost_p4(p4_child, -beta)
+
+def _unit(v):
+    n = np.linalg.norm(v)
+    if n == 0:
+        return None
+    return v / n
+
+def _cos_opening_angle_3d(v1, v2):
+    p1 = _p3(v1); p2 = _p3(v2)
+    n1 = np.linalg.norm(p1); n2 = np.linalg.norm(p2)
+    if n1 == 0 or n2 == 0:
+        return None
+    return float(np.dot(p1, p2) / (n1 * n2))
+
+def _sum_neutrinos(arrays):
+    px, py, pz, E, pid = arrays["px"], arrays["py"], arrays["pz"], arrays["E"], arrays["pdgID"]
+    out = []
+    for ev in range(len(pid)):
+        nu_px = 0.0; nu_py = 0.0; nu_pz = 0.0; nu_E = 0.0
+        for j in range(len(pid[ev])):
+            if pid[ev][j] in NEUTRINO_IDS:
+                nu_px += px[ev][j]
+                nu_py += py[ev][j]
+                nu_pz += pz[ev][j]
+                nu_E  += E[ev][j]
+        out.append(vector.obj(px=nu_px, py=nu_py, pz=nu_pz, E=nu_E) if nu_E != 0 else None)
+    return out
+
+def _pick_best_z_pair(arrays, mZ=91.1876):
+    """
+    Pick best Z candidate among ee and mumu (closest to mZ).
+    Returns per-event dict:
+      {"flavor": "ee"/"mumu", "lp": v_plus, "lm": v_minus, "Z": vZ}
+    or None if no SFOS pair.
+    """
+    ee_pairs = _pick_z_pair_vectors(arrays, lep_id=11, mZ=mZ)   # list of (e+,e-) or None
+    mm_pairs = _pick_z_pair_vectors(arrays, lep_id=13, mZ=mZ)   # list of (mu+,mu-) or None
+
+    out = []
+    for pr_ee, pr_mm in zip(ee_pairs, mm_pairs):
+        cand = []
+        if pr_ee is not None:
+            lp, lm = pr_ee
+            Z = lp + lm
+            cand.append(("ee", lp, lm, Z, abs(Z.mass - mZ)))
+        if pr_mm is not None:
+            lp, lm = pr_mm
+            Z = lp + lm
+            cand.append(("mumu", lp, lm, Z, abs(Z.mass - mZ)))
+
+        if not cand:
+            out.append(None)
+        else:
+            cand.sort(key=lambda x: x[4])
+            fl, lp, lm, Z, _ = cand[0]
+            out.append({"flavor": fl, "lp": lp, "lm": lm, "Z": Z})
+    return out
+
+def _pick_w_lepton(arrays, z_choice):
+    """
+    W-lepton = highest-pT charged lepton not used in the Z pair.
+    Returns per-event vector.obj or None.
+    """
+    e_plus, e_minus, mu_plus, mu_minus = _split_leptons_with_charge(arrays)
+    out = []
+    for ev, zc in enumerate(z_choice):
+        if zc is None:
+            out.append(None); continue
+
+        used = set()
+        # identify used objects by (px,py,pz,E) tuple (good enough at truth level)
+        def key(v): return (float(v.px), float(v.py), float(v.pz), float(v.E))
+        used.add(key(zc["lp"]))
+        used.add(key(zc["lm"]))
+
+        cands = []
+        for v in (e_plus[ev] + e_minus[ev] + mu_plus[ev] + mu_minus[ev]):
+            if key(v) not in used:
+                cands.append(v)
+
+        out.append(max(cands, key=lambda v: v.pt) if cands else None)
+    return out
+
+
+
 def ar_sort_pt(vlist):
     """Sort a flat list of vector.objs by descending pT."""
     return sorted(vlist, key=lambda v: v.pt, reverse=True)
@@ -520,6 +638,128 @@ def compute_met_phi(tree):
 
     return np.array(met_phi, dtype=float)
 
+
+
+
+def _cos_theta_star_positive_lepton_from_Z(arrays, mZ=91.1876):
+    """
+    cos(theta*) for the Z decay positive lepton in the Z rest frame.
+    Reference axis: Z direction in the WZ rest frame (helicity frame).
+    Returns per-event tuple: (flavor, cos_theta_star) or (None, None).
+    """
+    zc = _pick_best_z_pair(arrays, mZ=mZ)
+    nu = _sum_neutrinos(arrays)
+    wlep = _pick_w_lepton(arrays, zc)
+
+    out = []
+    for zinfo, nuv, lv in zip(zc, nu, wlep):
+        if zinfo is None or nuv is None or lv is None:
+            out.append((None, None)); continue
+
+        Z = zinfo["Z"]
+        W = lv + nuv
+        WZ = W + Z
+
+        # Z direction in WZ rest frame
+        p4Z_in_WZ = _to_rest_frame(
+            (Z.E, Z.px, Z.py, Z.pz),
+            (WZ.E, WZ.px, WZ.py, WZ.pz),
+        )
+        z_axis = _unit(p4Z_in_WZ[1:])
+        if z_axis is None:
+            out.append((None, None)); continue
+
+        # positive lepton momentum in Z rest frame
+        lp = zinfo["lp"]
+        p4lp_in_Z = _to_rest_frame(
+            (lp.E, lp.px, lp.py, lp.pz),
+            (Z.E,  Z.px,  Z.py,  Z.pz),
+        )
+        p_lp = p4lp_in_Z[1:]
+        u_lp = _unit(p_lp)
+        if u_lp is None:
+            out.append((None, None)); continue
+
+        out.append((zinfo["flavor"], float(np.dot(u_lp, z_axis))))
+    return out
+
+def compute_cthep(tree):
+    arrays = build_vectors(tree)
+    vals = _cos_theta_star_positive_lepton_from_Z(arrays)
+    # keep only Z->ee events
+    out = [c for fl, c in vals if fl == "ee" and c is not None]
+    return np.array(out, dtype=float)
+
+def compute_cthmm(tree):
+    arrays = build_vectors(tree)
+    vals = _cos_theta_star_positive_lepton_from_Z(arrays)
+    # keep only Z->mumu events
+    out = [c for fl, c in vals if fl == "mumu" and c is not None]
+    return np.array(out, dtype=float)
+
+def compute_cscatt(tree):
+    arrays = build_vectors(tree)
+    zc = _pick_best_z_pair(arrays)
+    nu = _sum_neutrinos(arrays)
+    wlep = _pick_w_lepton(arrays, zc)
+
+    out = []
+    for zinfo, nuv, lv in zip(zc, nu, wlep):
+        if zinfo is None or nuv is None or lv is None:
+            continue
+        Z = zinfo["Z"]
+        W = lv + nuv
+        WZ = W + Z
+
+        p4W_in_WZ = _to_rest_frame(
+            (W.E, W.px, W.py, W.pz),
+            (WZ.E, WZ.px, WZ.py, WZ.pz),
+        )
+        pW = p4W_in_WZ[1:]
+        n = np.linalg.norm(pW)
+        if n == 0:
+            continue
+        cos_theta_W = pW[2] / n  # z-axis is beam
+        out.append(abs(float(cos_theta_W)))
+
+    return np.array(out, dtype=float)
+
+
+def compute_cosuu(tree):
+    """
+    cos Δθ_{μ+μ-} : opening angle between μ+ and μ− (from the Z candidate if present).
+    """
+    arrays = build_vectors(tree)
+    zc = _pick_best_z_pair(arrays)
+
+    out = []
+    for zinfo in zc:
+        if zinfo is None or zinfo["flavor"] != "mumu":
+            continue
+        lp = zinfo["lp"]  # μ+
+        lm = zinfo["lm"]  # μ-
+        c = _cos_opening_angle_3d(lp, lm)
+        if c is not None:
+            out.append(c)
+    return np.array(out, dtype=float)
+
+def compute_cospp(tree):
+    """
+    cos Δθ_{e+μ+} : opening angle between leading e+ and leading μ+ in the event.
+    (Matches your table label intent; adjust if you want a different pairing rule.)
+    """
+    arrays = build_vectors(tree)
+    e_plus, _, mu_plus, _ = _split_leptons_with_charge(arrays)
+
+    out = []
+    for ep, mp in zip(e_plus, mu_plus):
+        if not ep or not mp:
+            continue
+        c = _cos_opening_angle_3d(ep[0], mp[0])  # leading by pT (already sorted)
+        if c is not None:
+            out.append(c)
+    return np.array(out, dtype=float)
+
 ##new functions per event
 
 def _pick_z_pair_vectors(arrays, lep_id=11, mZ=91.1876):
@@ -678,6 +918,12 @@ dispatch_map = {
     "DR_mumu_event":   compute_dr_mumu_event,
     "dphi_emu_event":  compute_dphi_emu_event,
     "DR_emu_event":    compute_dr_emu_event,
+
+    "cthep":  compute_cthep,   # cos θ*_{e+}
+    "cthmm":  compute_cthmm,   # cos θ*_{μ+}
+    "cscatt": compute_cscatt,  # |cos θ_W|
+    "cosuu":  compute_cosuu,   # cos Δθ_{μ+μ-}
+    "cospp":  compute_cospp,   # cos Δθ_{e+μ+}
     
     
     
@@ -715,5 +961,11 @@ label_map = {
     "DR_mumu_event":   r"$\Delta R(\mu^+, \mu^-)$ (per event)",
     "dphi_emu_event":  r"$\Delta\phi(e, \mu)$ [deg] (per event)",
     "DR_emu_event":    r"$\Delta R(e, \mu)$ (per event)",
+    "cthep":  r"$\cos\theta^{*}_{e^{+}}$",
+    "cthmm":  r"$\cos\theta^{*}_{\mu^{+}}$",
+    "cscatt": r"$|\cos\theta_{W}|$",
+    "cosuu":  r"$\cos\Delta\theta_{\mu^{+},\mu^{-}}$",
+    "cospp":  r"$\cos\Delta\theta_{e^{+},\mu^{+}}$",
+
 }
 

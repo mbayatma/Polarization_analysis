@@ -6,7 +6,7 @@ import numpy as np
 from plotter.physics_variables import build_vectors
 from plotter.io import load_SM_and_EFT_trees
 from plotter.plot_utils import compute_histogram, compute_ratio, plot_comparison
-from plotter.config import polarizations, xsecs_SM, xsecs_EFT
+from plotter.config import (polarizations, xsecs_SM, xsecs_EFT_all, eft_operators)
 from plotter.physics_variables import (
     dispatch_map,
     label_map,
@@ -22,7 +22,7 @@ EVENT_LEVEL_VARS = {
     "MET", "MET_phi",
 }
 
-def process_variable(var_name, trees_SM, trees_EFT):
+def process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, operator):
     all_data = []
     hist_SM_all = {}
     hist_EFT_all = {}
@@ -31,7 +31,7 @@ def process_variable(var_name, trees_SM, trees_EFT):
     all_keys = set(trees_SM.keys()).union(set(trees_EFT.keys()))
 
     if var_name not in dispatch_map:
-        print(f"❌ Unknown variable: {var_name}")
+        print(f"Unknown variable: {var_name}")
         return
 
     compute_func = dispatch_map[var_name]
@@ -127,6 +127,10 @@ def process_variable(var_name, trees_SM, trees_EFT):
         bins = np.linspace(0, 6, 30)
     elif "y" in var_name:
         bins = np.linspace(-3, 3, 40) if "d" not in var_name else np.linspace(0, 5, 40)
+    elif var_name in ("cthep", "cthmm", "cosuu", "cospp"):
+        bins = np.linspace(-1.0, 1.0, 41)
+    elif var_name in ("cscatt", "crecscatt"):
+        bins = np.linspace(0,1.0, 41)
     else:
         bin_min = np.floor(np.min(all_data) / 10) * 10
         bin_max = np.ceil(np.max(all_data) / 10) * 10
@@ -175,7 +179,7 @@ def process_variable(var_name, trees_SM, trees_EFT):
             print(f"[DEBUG] {pol} (EFT): xsec = {xsec_EFT}, "
                   f"N_events = {tree_EFT.num_entries}, "
                   f"xsec/event = {xsec_EFT / tree_EFT.num_entries:.3e}")
-            # ✅ AREA CONSISTENCY CHECK for EFT
+            # AREA CONSISTENCY CHECK for EFT
             # ============================================================
             nfill_EFT = len(hist_EFT_all[pol])
             fill_frac_EFT = nfill_EFT / max(1, tree_EFT.num_entries)
@@ -196,8 +200,9 @@ def process_variable(var_name, trees_SM, trees_EFT):
     # -----------------
     # Save plot
     # -----------------
-    os.makedirs("polarization_plots_new", exist_ok=True)
-    output_path = os.path.join("polarization_plots_new", f"{var_name}_comparison.png")
+    operator_dir =os.path.join("polariztion_plots_new", operator)
+    os.makedirs(operator_dir, exist_ok=True)
+    output_path = os.path.join(operator_dir, f"{var_name}_comparison.png")
 
     plot_comparison(
         variable_name=var_name,
@@ -208,6 +213,7 @@ def process_variable(var_name, trees_SM, trees_EFT):
         xlabel=label_map.get(var_name, var_name),
         output_path=output_path,
         ratio_uncertainties=ratio_uncertainties,
+        operator=operator, 
     )
 
 
@@ -215,17 +221,44 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--var", help="Physics variable to plot (e.g. M_event_rep, M_ee, DR_epmup)")
     parser.add_argument("--all", action="store_true", help="Plot all physics variables")
+    parser.add_argument("--operator", help="EFT operator name (e.g. cHWB). If omitted with --all, runs all operators.")
     args = parser.parse_args()
+    
+    # Decide which operators to run
+    if args.operator:
+        operators_to_run = [args.operator]
+    else:
+        # No operator specified: if --all, run all; otherwise we don't know what to do
+        if not args.all:
+            print("❌ Please specify --operator <OP> or use --all to run all operators.")
+            return
+        operators_to_run = eft_operators
 
-    trees_SM, trees_EFT = load_SM_and_EFT_trees(source="spin")
+    if not args.all and not args.var:
+        print("❌ Please specify --var <variable> or use --all.")
+        return
 
-    print("✅ SM trees loaded:")
-    for pol, tree in trees_SM.items():
-        print(f"  {pol}: {list(tree.keys())[:5]} ...")
+    # Loop over operators
+    for op in operators_to_run:
+        print(f"\n🔧 Using EFT operator: {op}")
 
-    print("\n✅ EFT trees loaded:")
-    for pol, tree in trees_EFT.items():
-        print(f"  {pol}: {list(tree.keys())[:5]} ...")
+        # Get cross sections for this operator
+        if op not in xsecs_EFT_all:
+            print(f"⚠️  No xsecs_EFT found for operator {op}, skipping.")
+            continue
+        xsecs_EFT = xsecs_EFT_all[op]
+
+        # Load trees for this operator
+        trees_SM, trees_EFT = load_SM_and_EFT_trees(source="spin", operator=op)
+
+        print("✅ SM trees loaded:")
+        for pol, tree in trees_SM.items():
+            print(f"  {pol}: {list(tree.keys())[:5]} ...")
+
+        print("\n✅ EFT trees loaded:")
+        for pol, tree in trees_EFT.items():
+            print(f"  {pol}: {list(tree.keys())[:5]} ...")
+
         
     # ========================================
     # Quick selection efficiency check
@@ -272,16 +305,18 @@ def main():
     print("-------------------------------------------------------------\n")
     
     if args.all:
-        print("\n📋 Variables to be plotted:")
+        print("\n📋 Variables to be plotted for operator {op}:")
         for v in dispatch_map:
             print(" -", v)
         for var_name in dispatch_map:
-            print(f"\n📊 Plotting: {var_name}")
-            process_variable(var_name, trees_SM, trees_EFT)
-    elif args.var:
-        process_variable(args.var, trees_SM, trees_EFT)
+            print(f"\n📊 Plotting: {var_name} (operator{op})")
+            process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, op)
+    #elif args.var:
+        #process_variable(args.var, trees_SM, trees_EFT, xsecs_EFT, op)
     else:
-        print("❌ Please specify --var <variable> or use --all")
+        #print("Please specify --var <variable> or use --all")
+        print(f"\n📊 Plotting: {args.var}  (operator {op})")
+        process_variable(args.var, trees_SM, trees_EFT, xsecs_EFT, op)
 
 if __name__ == "__main__":
     main()
