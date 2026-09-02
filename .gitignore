@@ -8,8 +8,9 @@ venv/
 __pycache__/
 *.pyc
 
-# Plot images
+# Plot images (generated analysis output; portfolio images live in docs/images/)
 *.png
+!docs/images/*.png
 
 # OS files
 .DS_Store
@@ -18,3 +19,12 @@ __pycache__/
 .ipynb_checkpoints/
 
 ml_datasets/*.parquet
+
+# ML training artifacts (models, scalers, scored datasets) - regenerate via ml/train.py
+ml_outputs/
+*.keras
+*.joblib
+
+# pytest
+.pytest_cache/
+

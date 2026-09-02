@@ -1,0 +1,6 @@
+# Additional dependencies for training/evaluating the models in ml/
+# (on top of requirements.txt). Kept separate so plotting-only usage
+# doesn't need to pull in TensorFlow.
+joblib==1.5.3
+scikit-learn==1.6.1
+tensorflow-cpu==2.20.0

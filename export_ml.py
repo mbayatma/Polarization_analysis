@@ -234,14 +234,30 @@ def export_variables(
     # -------------------------
     # Save full dataset
     # -------------------------
-    full_file = os.path.join(
-        output_dir,
-        "polarization_full.parquet"
-    )
+    # Only write polarization_full.parquet when it actually contains both
+    # theories. Otherwise a `--mode SM` or `--mode EFT` run would silently
+    # overwrite the combined file with a theory-only one; downstream code
+    # that expects "full" to mean SM+EFT would then break quietly. To
+    # rebuild the true full dataset, concatenate the SM and EFT parquet
+    # files directly (see ml/data.py:load_dataset).
+    if {"SM", "EFT"}.issubset(set(full_df["theory"].unique())):
 
-    full_df.to_parquet(full_file, index=False)
+        full_file = os.path.join(
+            output_dir,
+            "polarization_full.parquet"
+        )
 
-    print(f"\n✅ Saved full dataset:\n{full_file}")
+        full_df.to_parquet(full_file, index=False)
+
+        print(f"\n✅ Saved full dataset:\n{full_file}")
+
+    else:
+        print(
+            "\n⚠️ Skipped polarization_full.parquet: this run only "
+            f"produced theory={sorted(full_df['theory'].unique())}, not "
+            "both SM and EFT. Run with --mode ALL to regenerate the "
+            "true combined file."
+        )
 
 
 def main():

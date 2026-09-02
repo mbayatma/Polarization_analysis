@@ -1,3 +1,6 @@
+import csv
+import os
+
 # OLD SHOWERED FILES (kept for compatibility)
 base_path = "/eos/user/m/mbayatma/polarization_files/"
 
@@ -65,100 +68,36 @@ files_EFT_all = {
     for op in eft_operators
 }
 
-xsecs_EFT_all = {
+def _load_xsecs_eft_from_csv(csv_path):
+    """Load per-operator, per-polarization EFT cross sections from xsections_all.csv.
 
-    # ---- existing operator cW ----
+    The CSV is the single source of truth for these numbers (previously they
+    were hand-copied into a hardcoded dict here, operator by operator).
+    """
+    short_to_pol = {short: pol for pol, short in pol_to_short.items()}
+    xsecs = {}
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            pol = short_to_pol.get(row["pol"])
+            if pol is None:
+                continue
+            xsecs.setdefault(row["operator"], {})[pol] = float(row["xsec_pb"])
+    return xsecs
+
+
+_XSECTIONS_CSV = os.path.join(os.path.dirname(__file__), "..", "xsections_all.csv")
+
+xsecs_EFT_all = {
+    # cW isn't in xsections_all.csv (different production sample), so it
+    # stays hardcoded here.
     "cW": {
         r"$W_L Z_L$": 0.0211174627,
         r"$W_T Z_T$": 0.2588394876,
         r"$W_T Z_L$": 0.0295997177,
         r"$W_L Z_T$": 0.0324668316
     },
-
-    # ---- operator cHW (values you gave manually) ----
-    "cHW": {
-        r"$W_L Z_L$": 0.0211,
-        r"$W_T Z_L$": 0.02957,
-        r"$W_L Z_T$": 0.03251,
-        r"$W_T Z_T$": 0.2592
-    },
-    
-
-    "cHWB": {
-
-        r"$W_T Z_T$": 0.26749807343959997,
-        r"$W_L Z_L$": 0.021774346896949997,
-        r"$W_T Z_L$": 0.03051100526077,
-        r"$W_L Z_T$": 0.03354925146509,
-     },
-
-    "cHbox": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-    "cHDD": {
-        r"$W_T Z_T$": 0.2588608870859,
-        r"$W_L Z_L$": 0.02107693044458999,
-        r"$W_T Z_L$": 0.02953199588852,
-        r"$W_L Z_T$": 0.03247489722058,
-    },
-
-    "cHq3": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-    "cHq1": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-    "cHu": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-    "cHd": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-    "cHl3": {
-        r"$W_T Z_T$": 0.2629925953954001,
-        r"$W_L Z_L$": 0.02141031754726999,
-        r"$W_T Z_L$": 0.030001542141300006,
-        r"$W_L Z_T$": 0.03300296391238,
-    },
-
-    "cll1": {
-        r"$W_T Z_T$": 0.2752154066874,
-        r"$W_L Z_L$": 0.02240371235962001,
-        r"$W_T Z_L$": 0.03139321441688999,
-        r"$W_L Z_T$": 0.03455161327375,
-    },
-
-    "cWtil": {
-        r"$W_T Z_T$": 0.25925791952620003,
-        r"$W_L Z_L$": 0.021104686925369997,
-        r"$W_T Z_L$": 0.029573201498610004,
-        r"$W_L Z_T$": 0.03251220758310001,
-    },
-
-}   
-    # ---- others: auto-fill after reading xsections_all.csv ----
-    # (you can add them manually or load them dynamically in main_new.py)
- 
+}
+xsecs_EFT_all.update(_load_xsecs_eft_from_csv(_XSECTIONS_CSV))
 
 colors = {
     r"$W_L Z_L$": "red",
