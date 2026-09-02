@@ -100,7 +100,7 @@ If a fully supervised classifier can't beat chance, that's strong evidence
 there's nothing to find event-by-event — a stronger and more direct claim
 than step 2 can make alone.
 
-**A bug found and fixed along the way**: `export_ml.py`'s
+<!-- **A bug found and fixed along the way**: `export_ml.py`'s
 `polarization_full.parquet` output previously reflected whichever `--mode`
 was last used to generate it — a `--mode EFT` run would silently overwrite
 it with an EFT-only file. An earlier version of the multi-task training run
@@ -108,7 +108,8 @@ picked this up and ended up with no SM events at all, so its theory head
 trivially predicted "EFT" 100% of the time. `export_ml.py` now only writes
 the combined file when it genuinely contains both theories, and both
 training scripts load the theory-pure SM and EFT files directly instead of
-relying on it.
+relying on it.-->
+
 
 ### Training
 
