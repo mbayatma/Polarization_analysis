@@ -6,9 +6,8 @@ Analysis framework for studying **vector boson polarization** in WZ diboson
 production, comparing Standard Model (SM) predictions against Effective
 Field Theory (EFT) extensions across 12 dimension-6 SMEFT operators. Built
 on Monte Carlo events (LHE-level and Pythia-showered), it covers the full
-chain from ROOT files to physics plots to two complementary neural-network
-approaches that ask which EFT operators leave a detectable imprint on
-event kinematics.
+chain from ROOT files to physics plots to a neural-network approach that
+asks which EFT operators leave a detectable imprint on event kinematics.
 
 ## Physics background
 
@@ -47,7 +46,7 @@ xsections_all.csv   Per-operator, per-polarization cross sections (pb), read by 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # plotting + data export
-pip install -r requirements-ml.txt     # + TensorFlow/scikit-learn, only needed for ml/train.py
+pip install -r requirements-ml.txt     # + TensorFlow/scikit-learn, only needed for ml/train_two_output.py
 ```
 
 ## Usage: SM vs. EFT plotting
@@ -76,12 +75,7 @@ theories — see the note in `export_ml.py` about `--mode`).
 
 `ml/` trains neural networks to answer a specific physics question: do any
 of the 11 EFT operators leave a detectable imprint on reconstructed-level
-kinematics, on top of the SM polarization structure? Two independent,
-complementary approaches are implemented, and they agree on the answer.
-
-<p align="center">
-  <img src="docs/images/architecture.png" width="520" alt="Multi-task DNN architecture">
-</p>
+kinematics, on top of the SM polarization structure?
 
 This design is the result of an explicit iteration:
 
@@ -89,16 +83,11 @@ This design is the result of an explicit iteration:
 |---|---|---|---|
 | 1 | Single binary classifier, `W_L Z_L` vs. everything else | (notebook only) | Works (AUC ≈ 0.76), but throws away the T/L structure of the *other* boson |
 | 2 | **SM-only two-output**: `P(W_L)`, `P(Z_L)` heads trained *only* on SM events, then applied unchanged to each EFT operator's events to look for score drift | `ml/train_two_output.py` | See below — this is the direct way to ask "which operators are sensitive" |
-| 3 | **Multi-task**: shared trunk with the same two polarization heads *plus* a third head trained explicitly to classify SM vs. EFT, on combined SM+EFT data | `ml/train.py` | Same conclusion via a completely different, fully-supervised route |
 
 Step 2 never sees an EFT event during training — any shift it finds when
 scoring EFT events is a side effect of applying an SM-trained model out of
 distribution, so it needs an actual significance estimate, not just bar
-height, to be meaningful. Step 3 goes the opposite way: it's given labeled
-SM *and* EFT events and asked directly "can you tell these apart at all?".
-If a fully supervised classifier can't beat chance, that's strong evidence
-there's nothing to find event-by-event — a stronger and more direct claim
-than step 2 can make alone.
+height, to be meaningful.
 
 <!-- **A bug found and fixed along the way**: `export_ml.py`'s
 `polarization_full.parquet` output previously reflected whichever `--mode`
@@ -117,10 +106,7 @@ relying on it.-->
 # SM-only two-output model + per-operator sensitivity (answers "which operators?")
 python3 -m ml.train_two_output --output-dir ml_outputs/two_output
 
-# Multi-task model: polarization + SM-vs-EFT classification, trained on combined data
-python3 -m ml.train --output-dir ml_outputs/multitask
-
-# fast integration test on either, e.g.:
+# fast integration test:
 python3 -m ml.train_two_output --output-dir ml_outputs/smoke --sample-frac 0.01 --epochs 2
 ```
 
@@ -153,29 +139,12 @@ this model and this dataset, none of these 11 EFT
 operators produce a statistically convincing shift in the SM-trained
 polarization scores. Full numbers: `ml_outputs/two_output/plots/operator_significance.csv`.
 
-**Step 3 — Multi-task model** (trained jointly on the full combined SM+EFT
-dataset, 4.8M events, early stopped at epoch 16/60):
-
-<p align="center">
-  <img src="docs/images/roc_theory.png" width="410" alt="Theory head ROC curve">
-</p>
-
-| Head | Test AUC |
-|---|---|
-| `W_L` | 0.701 |
-| `Z_L` | 0.713 |
-| SM vs. EFT (all 11 operators pooled) | 0.502 |
-
-**0.502 AUC is indistinguishable from random.** A classifier explicitly
-trained, with labels, to separate SM from EFT events cannot do it — which
-is consistent with step 2's finding that no individual operator clears 2σ.
-
-Both independent approaches agree: at these Wilson coefficient values (the
-cross-section shifts in `xsections_all.csv` are ~0.3-5.7% relative to SM),
-these EFT effects are population-level, not per-event signatures. A
-per-variable shape/rate comparison — which is exactly what `main.py`'s
-SM/EFT ratio plots already do — remains the right tool for this regime; an
-event-level classifier alone is not a sensitive EFT probe here.
+At these Wilson coefficient values (the cross-section shifts in
+`xsections_all.csv` are ~0.3-5.7% relative to SM), these EFT effects are
+population-level, not per-event signatures. A per-variable shape/rate
+comparison — which is exactly what `main.py`'s SM/EFT ratio plots already
+do — remains the right tool for this regime; an event-level classifier
+alone is not a sensitive EFT probe here.
 
 ## Testing
 
