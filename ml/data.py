@@ -9,7 +9,16 @@ import numpy as np
 import pandas as pd
 
 # Columns that are metadata/labels, never model features.
-META_COLUMNS = ["polarization", "theory", "operator", "W_is_L", "Z_is_L", "is_EFT"]
+#
+# `weight` and `xsec_weight` come from the reco-level export and must stay out
+# of the feature set: xsec_weight takes only one magnitude per sample, so it
+# identifies the sample an event came from exactly, and a model given it would
+# score the label rather than the kinematics.
+META_COLUMNS = [
+    "polarization", "theory", "operator",
+    "W_is_L", "Z_is_L", "is_EFT",
+    "weight", "xsec_weight",
+]
 
 
 def load_dataset(sm_path, eft_path):

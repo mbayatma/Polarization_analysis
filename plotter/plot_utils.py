@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -111,6 +113,11 @@ def plot_comparison(
     if output_path:
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f"✅ Plot saved to: {output_path}")
+        # Vector copy alongside the raster one, for papers/slides.
+        pdf_path = os.path.splitext(output_path)[0] + ".pdf"
+        if pdf_path != output_path:
+            plt.savefig(pdf_path, bbox_inches="tight")
+            print(f"✅ Plot saved to: {pdf_path}")
     #plt.show()
     plt.close()
 

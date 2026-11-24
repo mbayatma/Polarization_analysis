@@ -277,7 +277,38 @@ def main():
         help="Choose which datasets to export"
     )
 
+    parser.add_argument(
+        "--operator",
+        default=None,
+        help=(
+            "Export only this EFT operator (skips SM; writes "
+            "<output_dir>/partial_eft_<operator>.parquet instead of the "
+            "combined files). Lets the 12 operators be exported as separate "
+            "parallel processes -- see scratchpad/export_lhe_logs/ for the "
+            "driver used to do that and merge_partial_exports.py to combine "
+            "the pieces afterwards -- since each operator's per-event "
+            "variable computation is the slow part, not the file I/O."
+        ),
+    )
+
     args = parser.parse_args()
+
+    if args.operator is not None:
+        # Single-operator EFT-only path for parallel export.
+        _, trees_EFT = load_SM_and_EFT_trees(source="spin", operator=args.operator)
+        if not trees_EFT:
+            raise SystemExit(f"No EFT trees found for operator {args.operator}")
+
+        all_dfs = []
+        process_tree_group(
+            trees=trees_EFT, theory="EFT", operator=args.operator, all_dfs=all_dfs
+        )
+        df = pd.concat(all_dfs, ignore_index=True)
+        os.makedirs(args.output_dir, exist_ok=True)
+        out_path = os.path.join(args.output_dir, f"partial_eft_{args.operator}.parquet")
+        df.to_parquet(out_path, index=False)
+        print(f"\n✅ Saved partial EFT dataset ({args.operator}): {df.shape} -> {out_path}")
+        return
 
     # Load ROOT trees
     trees_SM, trees_EFT = load_SM_and_EFT_trees(

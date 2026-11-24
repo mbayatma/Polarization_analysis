@@ -33,11 +33,39 @@ NEUTRINO_IDS = [12, -12, 14, -14, 16, -16]
 # -----------------------
 # Core array extraction
 # -----------------------
+# build_vectors is called once per variable per tree, and every dispatch_map
+# entry starts with it -- so plotting ~30 variables re-read and re-decompressed
+# the same branches ~30 times per tree. The arrays depend only on the tree (and
+# the trigger switch), so they are cached by file path + tree name. Caching the
+# arrays rather than the derived variables keeps each compute_* function
+# unchanged.
+_VECTOR_CACHE = {}
+
+
+def _tree_cache_key(tree):
+    try:
+        return (tree.file.file_path, tree.object_path, APPLY_3L_TRIGGER)
+    except AttributeError:
+        return None
+
+
+def clear_vector_cache():
+    """Drop cached event arrays (use when iterating over many samples)."""
+    _VECTOR_CACHE.clear()
+
+
 def build_vectors(tree):
+    key = _tree_cache_key(tree)
+    if key is not None and key in _VECTOR_CACHE:
+        return _VECTOR_CACHE[key]
+
     arrays = tree.arrays(["px", "py", "pz", "E", "pdgID"], library="np")
     if APPLY_3L_TRIGGER:
        mask = _event_mask_3l_trigger(arrays)
        arrays = _apply_event_mask(arrays, mask)
+
+    if key is not None:
+        _VECTOR_CACHE[key] = arrays
     return arrays
 
 

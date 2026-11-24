@@ -13,6 +13,9 @@ from plotter.physics_variables import (
     count_event_categories,   # NEW: event counters
 )
 
+# Set from --diagnostics; gates the slow per-event category counting.
+SHOW_COUNTS = False
+
 # Variables that are naturally event-level (useful for coverage debug prints)
 EVENT_LEVEL_VARS = {
     "M_event_rep",
@@ -71,8 +74,11 @@ def process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, operator):
 
        
 
-        # Debug: event categories & coverage (only print if we actually have this pol)
-        if in_SM:
+        # Debug: event categories & coverage (only print if we actually have this pol).
+        # count_event_categories walks every event, and process_variable is
+        # called once per variable, so this is gated to avoid repeating the
+        # same per-polarization count ~30 times per operator.
+        if in_SM and SHOW_COUNTS:
             counts = count_event_categories(trees_SM[pol])  # unweighted by default
             cov_msg = ""
             if var_name in EVENT_LEVEL_VARS and hasattr(trees_SM[pol], "num_entries"):
@@ -81,7 +87,7 @@ def process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, operator):
             print(f"[COUNTS][{pol}][SM]  SFOS={counts['unweighted']['N_SFOS']}, "
                   f"DF={counts['unweighted']['N_DF']}, DFOS={counts['unweighted']['N_DFOS']}{cov_msg}")
 
-        if in_EFT:
+        if in_EFT and SHOW_COUNTS:
             counts = count_event_categories(trees_EFT[pol])
             cov_msg = ""
             if var_name in EVENT_LEVEL_VARS and hasattr(trees_EFT[pol], "num_entries"):
@@ -222,8 +228,16 @@ def main():
     parser.add_argument("--var", help="Physics variable to plot (e.g. M_event_rep, M_ee, DR_epmup)")
     parser.add_argument("--all", action="store_true", help="Plot all physics variables")
     parser.add_argument("--operator", help="EFT operator name (e.g. cHWB). If omitted with --all, runs all operators.")
+    parser.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help="Print per-event selection/decay-composition diagnostics (slow: loops over every event).",
+    )
     args = parser.parse_args()
-    
+
+    global SHOW_COUNTS
+    SHOW_COUNTS = args.diagnostics
+
     # Decide which operators to run
     if args.operator:
         operators_to_run = [args.operator]
@@ -238,7 +252,9 @@ def main():
         print("❌ Please specify --var <variable> or use --all.")
         return
 
-    # Loop over operators
+    # Loop over operators. Everything below is per-operator: loading the
+    # trees, the optional diagnostics, and the plotting all have to stay
+    # inside this loop, or only the last operator ends up being plotted.
     for op in operators_to_run:
         print(f"\n🔧 Using EFT operator: {op}")
 
@@ -259,10 +275,26 @@ def main():
         for pol, tree in trees_EFT.items():
             print(f"  {pol}: {list(tree.keys())[:5]} ...")
 
-        
-    # ========================================
-    # Quick selection efficiency check
-    # ========================================
+        if args.diagnostics:
+            run_diagnostics(trees_SM, trees_EFT)
+
+        variables = list(dispatch_map) if args.all else [args.var]
+        if args.all:
+            print(f"\n📋 Variables to be plotted for operator {op}:")
+            for v in variables:
+                print(" -", v)
+
+        for var_name in variables:
+            print(f"\n📊 Plotting: {var_name} (operator {op})")
+            process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, op)
+
+
+def run_diagnostics(trees_SM, trees_EFT):
+    """Selection-efficiency and decay-composition printouts.
+
+    Both loop in Python over every event of every polarization, so this is
+    opt-in (--diagnostics) rather than something every plotting run pays for.
+    """
     from plotter.physics_variables import _event_mask_3l_trigger
 
     print("\n✅ Applying 3-lepton + single-lepton trigger selection check:")
@@ -275,7 +307,7 @@ def main():
             eff = 100.0 * n_pass / max(1, n_total)
             print(f"[SELECTION][{pol}][{tag}]  pass = {n_pass:6d} / {n_total:6d}  ({eff:5.1f}%)")
     print("-------------------------------------------------------------\n")
-    
+
     def breakdown(tree):
         arr = build_vectors(tree)
         pdg = arr["pdgID"]
@@ -303,20 +335,6 @@ def main():
         b = breakdown(t)
         print(f"[DECAYS][{pol}][EFT] Zee={b['Zee']:>6}  Zmm={b['Zmm']:>6}  W→e={b['We']:>6}  W→μ={b['Wmu']:>6}  total={b['total']:>6}")
     print("-------------------------------------------------------------\n")
-    
-    if args.all:
-        print("\n📋 Variables to be plotted for operator {op}:")
-        for v in dispatch_map:
-            print(" -", v)
-        for var_name in dispatch_map:
-            print(f"\n📊 Plotting: {var_name} (operator{op})")
-            process_variable(var_name, trees_SM, trees_EFT, xsecs_EFT, op)
-    #elif args.var:
-        #process_variable(args.var, trees_SM, trees_EFT, xsecs_EFT, op)
-    else:
-        #print("Please specify --var <variable> or use --all")
-        print(f"\n📊 Plotting: {args.var}  (operator {op})")
-        process_variable(args.var, trees_SM, trees_EFT, xsecs_EFT, op)
 
 if __name__ == "__main__":
     main()

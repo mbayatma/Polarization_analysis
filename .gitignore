@@ -28,3 +28,8 @@ ml_outputs/
 # pytest
 .pytest_cache/
 
+
+# Generated outputs (too large for GitHub)
+ml_outputs_*/
+polarization_plots_reco/
+polariztion_plots_new/

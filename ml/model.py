@@ -46,6 +46,52 @@ def build_two_output_dnn(input_dim, learning_rate=1e-3):
     return model
 
 
+def build_binary_dnn(input_dim, learning_rate=1e-3):
+    """Build the single-output W_L Z_L vs. rest classifier.
+
+    This is the simplest of the three models: one sigmoid asking "is this
+    event fully longitudinal". It collapses the four polarization states into
+    one bit, so unlike the two-output model it cannot say *which* boson is
+    longitudinal -- but it is the natural baseline, and the quantity it
+    targets (the fully-longitudinal fraction) is the one most directly tied
+    to electroweak symmetry breaking.
+
+    Kept architecturally identical to build_two_output_dnn apart from the
+    output layer, so the comparison between them reflects the choice of
+    target rather than a difference in capacity.
+    """
+    model = models.Sequential([
+        layers.Input(shape=(input_dim,)),
+
+        layers.Dense(256, activation="relu"),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+
+        layers.Dense(128, activation="relu"),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+
+        layers.Dense(64, activation="relu"),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+
+        layers.Dense(32, activation="relu"),
+
+        layers.Dense(1, activation="sigmoid"),
+    ])
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        loss="binary_crossentropy",
+        metrics=[
+            tf.keras.metrics.BinaryAccuracy(name="binary_accuracy"),
+            tf.keras.metrics.AUC(name="auc"),
+        ],
+    )
+
+    return model
+
+
 def build_multitask_dnn(input_dim, learning_rate=1e-3):
     """Build the shared-trunk, two-head polarization/theory classifier.
 

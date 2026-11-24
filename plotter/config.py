@@ -6,8 +6,21 @@ base_path = "/eos/user/m/mbayatma/polarization_files/"
 
 # NEW FILES: SM and EFT (LHE → ROOT)
 base_path_SM  = "/eos/user/m/mbayatma/polarization_files/SMRootFiles"
-base_path_EFT = "/eos/user/m/mbayatma/polarization_files/BSMRootFiles" 
+base_path_EFT = "/eos/user/m/mbayatma/polarization_files/BSMRootFiles"
 base_path_BSM= base_path_EFT
+
+# Regenerated EFT files (2026-09-11). 23 of the 44 original EFT files were
+# byte-identical duplicates of each other and were regenerated; plotter/io.py
+# prefers this directory and falls back to base_path_EFT for the rest.
+base_path_EFT_REGEN = "/eos/user/m/mbayatma/polarization_files/ROOT_OUTPUT_regenerated_20260911"
+
+# Pythia8-showered + Delphes samples, 0j and 1j merged (ATLAS slim card).
+# A complete, self-consistent set: 4 polarizations x (SM + 12 operators).
+# Flat reco ntuples ("<sample>_01j_flat.root", tree "events") are what the
+# reco-level analysis reads; the "_01j_delphes.root" files next to them are
+# the full Delphes output and are not needed downstream.
+base_path_RECO = "/eos/user/m/mbayatma/polarization_files/WZ_01j_merged_ROOT"
+reco_file_template = "WZ_3L_{pol}_{sample}_01j_flat.root"
 
 polarizations = [
     r"$W_L Z_L$",
